@@ -1,0 +1,329 @@
+openapi: 3.1.0
+info:
+  title: FastPay Backend API
+  version: 0.1.0
+  description: HTTP contract owned by the FastPay backend repository.
+servers:
+  - url: http://localhost:4000
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      security: []
+      responses:
+        "200":
+          description: Service is alive.
+  /auth/register:
+    post:
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "200":
+          description: Registered merchant session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokens"
+  /auth/login:
+    post:
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Merchant session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokens"
+        "401":
+          description: Invalid credentials.
+  /invoices:
+    get:
+      responses:
+        "200":
+          description: Merchant invoices.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invoice"
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvoiceRequest"
+      responses:
+        "200":
+          description: Created invoice.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+  /invoices/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Merchant invoice.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+  /invoices/public/{publicId}:
+    get:
+      security: []
+      parameters:
+        - name: publicId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Public invoice payment view.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+        "404":
+          description: Invoice not found.
+  /payments/{publicId}/prepare-tx:
+    get:
+      security: []
+      parameters:
+        - name: publicId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: payer
+          in: query
+          required: true
+          schema:
+            type: string
+            pattern: "^G[A-Z2-7]{55}$"
+      responses:
+        "200":
+          description: Unsigned Stellar transaction XDR.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreparedTransaction"
+  /payments/{invoiceId}/stream:
+    get:
+      security: []
+      parameters:
+        - name: invoiceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Server-sent invoice status events.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /compliance/screen:
+    post:
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WalletScreenRequest"
+      responses:
+        "200":
+          description: Wallet screening result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletScreenResult"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [businessName, email, password]
+      properties:
+        businessName:
+          type: string
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          minLength: 12
+          maxLength: 200
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          minLength: 1
+          maxLength: 200
+    AuthTokens:
+      type: object
+      required: [accessToken, expiresIn, merchant]
+      properties:
+        accessToken:
+          type: string
+        expiresIn:
+          type: integer
+        merchant:
+          type: object
+          required: [id, businessName, email]
+          properties:
+            id:
+              type: string
+              format: uuid
+            businessName:
+              type: string
+            email:
+              type: string
+              format: email
+    CreateInvoiceRequest:
+      type: object
+      required: [description, amount]
+      properties:
+        description:
+          type: string
+          minLength: 2
+          maxLength: 240
+        amount:
+          type: string
+          pattern: "^\\d+(\\.\\d{1,7})?$"
+        expiresInMinutes:
+          type: integer
+          minimum: 1
+          maximum: 43200
+    Invoice:
+      type: object
+      required:
+        - id
+        - merchantId
+        - publicId
+        - description
+        - state
+        - grossAmountUnits
+        - platformFeeAmountUnits
+        - merchantNetAmountUnits
+        - assetCode
+        - assetIssuer
+        - destinationAccount
+        - destinationMuxedAccount
+        - stellarMemo
+        - expiresAt
+        - paidAt
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        merchantId:
+          type: string
+          format: uuid
+        publicId:
+          type: string
+        description:
+          type: string
+        state:
+          $ref: "#/components/schemas/InvoiceState"
+        grossAmountUnits:
+          type: string
+        platformFeeAmountUnits:
+          type: string
+        merchantNetAmountUnits:
+          type: string
+        assetCode:
+          type: string
+        assetIssuer:
+          type: string
+        destinationAccount:
+          type: string
+        destinationMuxedAccount:
+          type: string
+        stellarMemo:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        paidAt:
+          type:
+            - string
+            - "null"
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        merchantName:
+          type: string
+    InvoiceState:
+      type: string
+      enum: [pending, paid, expired, settled, failed]
+    PreparedTransaction:
+      type: object
+      required: [xdr, networkPassphrase, horizonUrl]
+      properties:
+        xdr:
+          type: string
+        networkPassphrase:
+          type: string
+        horizonUrl:
+          type: string
+          format: uri
+    WalletScreenRequest:
+      type: object
+      required: [address]
+      properties:
+        address:
+          type: string
+          pattern: "^G[A-Z2-7]{55}$"
+    WalletScreenResult:
+      type: object
+      required: [address, decision, reason]
+      properties:
+        address:
+          type: string
+        decision:
+          type: string
+          enum: [clear, review, blocked]
+        reason:
+          type:
+            - string
+            - "null"

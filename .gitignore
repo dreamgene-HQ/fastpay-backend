@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+*.log
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+
+fastpay.db
+*.sqlite
+*.sqlite3
