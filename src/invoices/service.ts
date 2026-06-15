@@ -2,6 +2,7 @@ import { createInvoiceSchema, type Invoice } from "../contracts.js";
 import type { PoolClient } from "pg";
 import { query, transaction } from "../database/pool.js";
 import { env } from "../env.js";
+import { AppError } from "../http.js";
 import { publicId, uint63String } from "../ids.js";
 import { calculateFee, formatUsdcUnits, parseUsdcUnits } from "../money.js";
 import { makeMuxedTreasuryAddress, preparePaymentTransaction } from "../stellar.js";
@@ -99,10 +100,10 @@ export async function getPublicInvoice(publicId: string) {
 export async function prepareInvoicePayment(publicId: string, payer: string) {
   const invoice = await getPublicInvoice(publicId);
   if (!invoice) {
-    throw new Error("invoice_not_found");
+    throw new AppError("invoice_not_found", 404);
   }
   if (invoice.state !== "pending" || new Date(invoice.expiresAt).getTime() <= Date.now()) {
-    throw new Error("invoice_not_payable");
+    throw new AppError("invoice_not_payable", 409);
   }
 
   const xdr = await preparePaymentTransaction({
