@@ -199,12 +199,31 @@ async function findInvoice(client: PoolClient, record: HorizonPayment) {
   return result.rows[0] ?? null;
 }
 
+const MEMO_FETCH_TIMEOUT_MS = 5000;
+
 async function fetchMemo(record: HorizonPayment) {
   const href = record._links?.transaction?.href;
   if (!href) {
     return null;
   }
-  const response = await fetch(href);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), MEMO_FETCH_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(href, { signal: controller.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      console.error(`fetchMemo timed out after ${MEMO_FETCH_TIMEOUT_MS}ms for ${href}`);
+    } else {
+      console.error(`fetchMemo failed for ${href}:`, error);
+    }
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+
   if (!response.ok) {
     return null;
   }
