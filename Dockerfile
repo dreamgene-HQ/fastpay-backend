@@ -16,7 +16,7 @@ ENV NODE_ENV=production
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
-COPY db ./db
+COPY db ./dist/db
 
 EXPOSE 4000
 CMD ["node", "dist/src/server.js"]
