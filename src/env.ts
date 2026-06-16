@@ -20,7 +20,11 @@ const envSchema = z.object({
   PLATFORM_TREASURY_PUBLIC_KEY: z.string().regex(/^G[A-Z2-7]{55}$/),
   RECONCILIATION_START_CURSOR: z.string().optional(),
   COMPLIANCE_BLOCKED_ADDRESSES: z.string().default(""),
-  WEBHOOK_SIGNING_SECRET: z.string().min(32)
+  WEBHOOK_SIGNING_SECRET: z.string().min(32),
+  AUTH_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
+  AUTH_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).default(60),
+  PREPARE_TX_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(20),
+  PREPARE_TX_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).default(60)
 });
 
 export const env = envSchema.parse(process.env);

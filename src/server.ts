@@ -1,18 +1,44 @@
 import { registerMerchant, loginMerchant } from "./auth/service.js";
 import { screenWallet } from "./compliance/service.js";
 import { env } from "./env.js";
-import { Router, pathId, requireSession, writeJson } from "./http.js";
+import { Router, pathId, requireSession, writeJson, type RequestContext } from "./http.js";
 import { createInvoice, getInvoice, getPublicInvoice, listInvoices, prepareInvoicePayment } from "./invoices/service.js";
+import { clientIp, RateLimiter } from "./middleware/rate-limit.js";
 import { streamInvoiceStatus } from "./payments/sse.js";
 
 const router = new Router();
 
+const authRateLimiter = new RateLimiter(env.AUTH_RATE_LIMIT_MAX, env.AUTH_RATE_LIMIT_WINDOW_SECONDS * 1000);
+const prepareTxRateLimiter = new RateLimiter(
+  env.PREPARE_TX_RATE_LIMIT_MAX,
+  env.PREPARE_TX_RATE_LIMIT_WINDOW_SECONDS * 1000
+);
+
+/** Returns false (and writes a 429 response) if the request should be rejected. */
+function enforceRateLimit(limiter: RateLimiter, { req, res }: RequestContext): boolean {
+  const result = limiter.consume(clientIp(req));
+  if (!result.allowed) {
+    res.setHeader("retry-after", result.retryAfterSeconds.toString());
+    writeJson(res, 429, { error: "rate_limited", retryAfterSeconds: result.retryAfterSeconds });
+    return false;
+  }
+  return true;
+}
+
 router.add("GET", /^\/health$/, async () => ({ ok: true }));
 
-router.add("POST", /^\/auth\/register$/, async ({ body }) => registerMerchant(body));
+router.add("POST", /^\/auth\/register$/, async (context) => {
+  if (!enforceRateLimit(authRateLimiter, context)) {
+    return null;
+  }
+  return registerMerchant(context.body);
+});
 
-router.add("POST", /^\/auth\/login$/, async ({ body }) => {
-  const tokens = await loginMerchant(body);
+router.add("POST", /^\/auth\/login$/, async (context) => {
+  if (!enforceRateLimit(authRateLimiter, context)) {
+    return null;
+  }
+  const tokens = await loginMerchant(context.body);
   if (!tokens) {
     const error = new Error("unauthorized");
     error.name = "UnauthorizedError";
