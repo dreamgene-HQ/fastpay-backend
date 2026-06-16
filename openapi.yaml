@@ -48,6 +48,24 @@ paths:
                 $ref: "#/components/schemas/AuthTokens"
         "401":
           description: Invalid credentials.
+  /merchant/profile:
+    patch:
+      summary: Update merchant profile (set or update Stellar address).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Updated profile fields.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MerchantProfile"
+        "400":
+          description: Validation error (e.g. invalid Stellar address format).
   /invoices:
     get:
       responses:
@@ -73,6 +91,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Invoice"
+        "400":
+          description: Merchant has not set a Stellar address (merchant_stellar_address_required).
   /invoices/{id}:
     get:
       parameters:
@@ -185,6 +205,24 @@ components:
           type: string
           minLength: 12
           maxLength: 200
+        stellarAddress:
+          type: string
+          pattern: "^G[A-Z2-7]{55}$"
+          description: Merchant's own Stellar public key. Can be set now or via PATCH /merchant/profile later.
+    UpdateProfileRequest:
+      type: object
+      required: [stellarAddress]
+      properties:
+        stellarAddress:
+          type: string
+          pattern: "^G[A-Z2-7]{55}$"
+          description: Merchant's own Stellar public key for receiving invoice payments.
+    MerchantProfile:
+      type: object
+      required: [stellarAddress]
+      properties:
+        stellarAddress:
+          type: string
     LoginRequest:
       type: object
       required: [email, password]
@@ -217,6 +255,11 @@ components:
             email:
               type: string
               format: email
+            stellarAddress:
+              type:
+                - string
+                - "null"
+              pattern: "^G[A-Z2-7]{55}$"
     CreateInvoiceRequest:
       type: object
       required: [description, amount]

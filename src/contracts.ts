@@ -1,9 +1,16 @@
 import { z } from "zod";
 
+const stellarAddressSchema = z.string().regex(/^G[A-Z2-7]{55}$/, "must be a Stellar G public key (56 chars)");
+
 export const registerSchema = z.object({
   businessName: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(255),
-  password: z.string().min(12).max(200)
+  password: z.string().min(12).max(200),
+  stellarAddress: stellarAddressSchema.optional()
+});
+
+export const updateProfileSchema = z.object({
+  stellarAddress: stellarAddressSchema
 });
 
 export const loginSchema = z.object({
@@ -13,6 +20,7 @@ export const loginSchema = z.object({
 
 export type RegisterDto = z.infer<typeof registerSchema>;
 export type LoginDto = z.infer<typeof loginSchema>;
+export type UpdateProfileDto = z.infer<typeof updateProfileSchema>;
 
 export type AuthTokens = {
   accessToken: string;
@@ -21,14 +29,13 @@ export type AuthTokens = {
     id: string;
     businessName: string;
     email: string;
+    stellarAddress: string | null;
   };
 };
 
 export const invoiceStates = ["pending", "paid", "expired", "settled", "failed"] as const;
-export const payoutStates = ["queued", "submitted", "settled", "failed", "dead_lettered"] as const;
 
 export type InvoiceState = (typeof invoiceStates)[number];
-export type PayoutState = (typeof payoutStates)[number];
 
 export const createInvoiceSchema = z.object({
   description: z.string().trim().min(2).max(240),
@@ -72,6 +79,12 @@ export const screenWalletSchema = z.object({
   address: z.string().regex(/^G[A-Z2-7]{55}$/, "address must be a Stellar G public key")
 });
 
+export const submitPaymentSchema = z.object({
+  txHash: z.string().min(1)
+});
+
+export type SubmitPaymentDto = z.infer<typeof submitPaymentSchema>;
+
 export type ScreenWalletDto = z.infer<typeof screenWalletSchema>;
 export type ComplianceDecision = "clear" | "review" | "blocked";
 
@@ -81,17 +94,3 @@ export type ComplianceScreenResult = {
   reason: string | null;
 };
 
-export const createWebhookSchema = z.object({
-  url: z.string().url().refine((url) => url.startsWith("https://"), "webhook URL must use HTTPS"),
-  events: z.array(z.enum(["invoice.paid", "invoice.expired", "invoice.settled", "payout.failed"])).min(1)
-});
-
-export type CreateWebhookDto = z.infer<typeof createWebhookSchema>;
-
-export type WebhookEvent = {
-  id: string;
-  eventType: string;
-  deliveryState: "queued" | "delivered" | "failed" | "dead_lettered";
-  attempts: number;
-  createdAt: string;
-};

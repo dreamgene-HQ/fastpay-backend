@@ -5,7 +5,7 @@ import { env } from "../env.js";
 import { AppError } from "../http.js";
 import { publicId, uint63String } from "../ids.js";
 import { calculateFee, formatUsdcUnits, parseUsdcUnits } from "../money.js";
-import { makeMuxedTreasuryAddress, preparePaymentTransaction } from "../stellar.js";
+import { makeMuxedAddress, preparePaymentTransaction } from "../stellar.js";
 
 type InvoiceRow = {
   id: string;
@@ -29,6 +29,16 @@ type InvoiceRow = {
 
 export async function createInvoice(merchantId: string, input: unknown) {
   const dto = createInvoiceSchema.parse(input);
+
+  const merchantResult = await query<{ merchant_stellar_address: string | null }>(
+    "SELECT merchant_stellar_address FROM merchants WHERE id = $1",
+    [merchantId]
+  );
+  const merchantStellarAddress = merchantResult.rows[0]?.merchant_stellar_address;
+  if (!merchantStellarAddress) {
+    throw new AppError("merchant_stellar_address_required", 400);
+  }
+
   const grossUnits = parseUsdcUnits(dto.amount);
   const amounts = calculateFee(grossUnits, env.PLATFORM_FEE_BPS, env.PLATFORM_FEE_FIXED_UNITS);
   const muxedId = uint63String();
@@ -54,8 +64,8 @@ export async function createInvoice(merchantId: string, input: unknown) {
         amounts.merchantNetAmountUnits.toString(),
         env.STELLAR_ASSET_CODE,
         env.STELLAR_ASSET_ISSUER,
-        env.PLATFORM_TREASURY_PUBLIC_KEY,
-        makeMuxedTreasuryAddress(muxedId),
+        merchantStellarAddress,
+        makeMuxedAddress(merchantStellarAddress, muxedId),
         muxedId,
         muxedId,
         expiresAt
@@ -121,11 +131,12 @@ export async function prepareInvoicePayment(publicId: string, payer: string) {
 }
 
 export async function expirePendingInvoices() {
-  await query(
+  const result = await query(
     `UPDATE invoices
      SET state = 'expired', updated_at = now(), version = version + 1
      WHERE state = 'pending' AND expires_at < now()`
   );
+  return result.rowCount ?? 0;
 }
 
 export async function recordTransition(
