@@ -255,6 +255,11 @@ components:
             email:
               type: string
               format: email
+            stellarAddress:
+              type:
+                - string
+                - "null"
+              pattern: "^G[A-Z2-7]{55}$"
     CreateInvoiceRequest:
       type: object
       required: [description, amount]

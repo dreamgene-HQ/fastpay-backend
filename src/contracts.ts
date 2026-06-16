@@ -29,6 +29,7 @@ export type AuthTokens = {
     id: string;
     businessName: string;
     email: string;
+    stellarAddress: string | null;
   };
 };
 
