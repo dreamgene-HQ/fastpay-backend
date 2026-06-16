@@ -19,8 +19,7 @@ const envSchema = z.object({
   STELLAR_ASSET_ISSUER: z.string().regex(/^G[A-Z2-7]{55}$/),
   PLATFORM_TREASURY_PUBLIC_KEY: z.string().regex(/^G[A-Z2-7]{55}$/),
   RECONCILIATION_START_CURSOR: z.string().optional(),
-  COMPLIANCE_BLOCKED_ADDRESSES: z.string().default(""),
-  WEBHOOK_SIGNING_SECRET: z.string().min(32)
+  COMPLIANCE_BLOCKED_ADDRESSES: z.string().default("")
 });
 
 export const env = envSchema.parse(process.env);

@@ -25,10 +25,8 @@ export type AuthTokens = {
 };
 
 export const invoiceStates = ["pending", "paid", "expired", "settled", "failed"] as const;
-export const payoutStates = ["queued", "submitted", "settled", "failed", "dead_lettered"] as const;
 
 export type InvoiceState = (typeof invoiceStates)[number];
-export type PayoutState = (typeof payoutStates)[number];
 
 export const createInvoiceSchema = z.object({
   description: z.string().trim().min(2).max(240),
@@ -81,17 +79,3 @@ export type ComplianceScreenResult = {
   reason: string | null;
 };
 
-export const createWebhookSchema = z.object({
-  url: z.string().url().refine((url) => url.startsWith("https://"), "webhook URL must use HTTPS"),
-  events: z.array(z.enum(["invoice.paid", "invoice.expired", "invoice.settled", "payout.failed"])).min(1)
-});
-
-export type CreateWebhookDto = z.infer<typeof createWebhookSchema>;
-
-export type WebhookEvent = {
-  id: string;
-  eventType: string;
-  deliveryState: "queued" | "delivered" | "failed" | "dead_lettered";
-  attempts: number;
-  createdAt: string;
-};
