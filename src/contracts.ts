@@ -1,9 +1,16 @@
 import { z } from "zod";
 
+const stellarAddressSchema = z.string().regex(/^G[A-Z2-7]{55}$/, "must be a Stellar G public key (56 chars)");
+
 export const registerSchema = z.object({
   businessName: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(255),
-  password: z.string().min(12).max(200)
+  password: z.string().min(12).max(200),
+  stellarAddress: stellarAddressSchema.optional()
+});
+
+export const updateProfileSchema = z.object({
+  stellarAddress: stellarAddressSchema
 });
 
 export const loginSchema = z.object({
@@ -13,6 +20,7 @@ export const loginSchema = z.object({
 
 export type RegisterDto = z.infer<typeof registerSchema>;
 export type LoginDto = z.infer<typeof loginSchema>;
+export type UpdateProfileDto = z.infer<typeof updateProfileSchema>;
 
 export type AuthTokens = {
   accessToken: string;
@@ -21,6 +29,7 @@ export type AuthTokens = {
     id: string;
     businessName: string;
     email: string;
+    stellarAddress: string | null;
   };
 };
 
@@ -69,6 +78,12 @@ export type PaymentEvent = {
 export const screenWalletSchema = z.object({
   address: z.string().regex(/^G[A-Z2-7]{55}$/, "address must be a Stellar G public key")
 });
+
+export const submitPaymentSchema = z.object({
+  txHash: z.string().min(1)
+});
+
+export type SubmitPaymentDto = z.infer<typeof submitPaymentSchema>;
 
 export type ScreenWalletDto = z.infer<typeof screenWalletSchema>;
 export type ComplianceDecision = "clear" | "review" | "blocked";

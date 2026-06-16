@@ -17,8 +17,6 @@ const envSchema = z.object({
   STELLAR_HORIZON_URL: z.string().url(),
   STELLAR_ASSET_CODE: z.string().min(1).max(12),
   STELLAR_ASSET_ISSUER: z.string().regex(/^G[A-Z2-7]{55}$/),
-  PLATFORM_TREASURY_PUBLIC_KEY: z.string().regex(/^G[A-Z2-7]{55}$/),
-  RECONCILIATION_START_CURSOR: z.string().optional(),
   COMPLIANCE_BLOCKED_ADDRESSES: z.string().default("")
 });
 
