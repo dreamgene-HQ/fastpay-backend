@@ -61,6 +61,20 @@ export function requireSession(session: Session | null): Session {
   return session;
 }
 
+/**
+ * Error type for known, safe-to-surface application errors (e.g. "invoice not found").
+ * Anything else thrown is treated as unexpected and never exposed to the client.
+ */
+export class AppError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "AppError";
+    this.status = status;
+  }
+}
+
 export function pathId(pattern: RegExp, pathname: string) {
   return pattern.exec(pathname)?.groups?.id ?? "";
 }
@@ -118,6 +132,11 @@ function handleError(res: ServerResponse, error: unknown) {
     return;
   }
 
-  const message = error instanceof Error ? error.message : "internal_error";
-  writeJson(res, 500, { error: message });
+  if (error instanceof AppError) {
+    writeJson(res, error.status, { error: error.message });
+    return;
+  }
+
+  console.error(error);
+  writeJson(res, 500, { error: "internal_server_error" });
 }
