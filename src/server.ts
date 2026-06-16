@@ -3,7 +3,9 @@ import { screenWallet } from "./compliance/service.js";
 import { env } from "./env.js";
 import { Router, pathId, requireSession, writeJson } from "./http.js";
 import { createInvoice, getInvoice, getPublicInvoice, listInvoices, prepareInvoicePayment } from "./invoices/service.js";
+import { confirmPayment } from "./payments/confirm.js";
 import { streamInvoiceStatus } from "./payments/sse.js";
+import { submitPaymentSchema } from "./contracts.js";
 
 const router = new Router();
 
@@ -52,6 +54,12 @@ router.add("GET", preparePayment, async ({ url }) => {
     return { error: "payer_required" };
   }
   return prepareInvoicePayment(pathId(preparePayment, url.pathname), payer);
+});
+
+const submitPayment = /^\/payments\/(?<id>[^/]+)\/submit$/;
+router.add("POST", submitPayment, async ({ url, body }) => {
+  const { txHash } = submitPaymentSchema.parse(body);
+  return confirmPayment(pathId(submitPayment, url.pathname), txHash);
 });
 
 const streamPayment = /^\/payments\/(?<id>[0-9a-f-]+)\/stream$/;
