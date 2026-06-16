@@ -2,7 +2,7 @@ import type { PoolClient } from "pg";
 import { pool, transaction } from "../database/pool.js";
 import { env } from "../env.js";
 import { parseUsdcUnits } from "../money.js";
-import { recordTransition } from "../invoices/service.js";
+import { expirePendingInvoices, recordTransition } from "../invoices/service.js";
 
 type HorizonPayment = {
   id: string;
@@ -268,15 +268,32 @@ function ledgerFromOperationId(operationId: string) {
   return BigInt(operationId) / 4_294_967_296n;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-  reconcileOnce()
-    .then((count) => {
+const RECONCILE_INTERVAL_MS = 10_000;
+const EXPIRE_INTERVAL_MS = 60_000;
+
+async function runReconcile() {
+  try {
+    const count = await reconcileOnce();
+    if (count > 0) {
       console.log(`processed ${count} records`);
-      return pool.end();
-    })
-    .catch(async (error) => {
-      console.error(error);
-      await pool.end();
-      process.exit(1);
-    });
+    }
+  } catch (error) {
+    console.error("reconciliation failed:", error);
+  }
+}
+
+async function runExpiry() {
+  try {
+    const expired = await expirePendingInvoices();
+    console.log(`expired ${expired} pending invoice(s)`);
+  } catch (error) {
+    console.error("invoice expiry failed:", error);
+  }
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  void runReconcile();
+  void runExpiry();
+  setInterval(runReconcile, RECONCILE_INTERVAL_MS);
+  setInterval(runExpiry, EXPIRE_INTERVAL_MS);
 }
