@@ -1,4 +1,4 @@
-import { loginSchema, registerSchema, type AuthTokens } from "../contracts.js";
+import { loginSchema, registerSchema, updateProfileSchema, type AuthTokens } from "../contracts.js";
 import { query, transaction } from "../database/pool.js";
 import { env } from "../env.js";
 import { hashPassword, verifyPassword } from "./passwords.js";
@@ -9,6 +9,7 @@ type MerchantRow = {
   business_name: string;
   email: string;
   password_hash: string;
+  merchant_stellar_address: string | null;
 };
 
 export async function registerMerchant(input: unknown): Promise<AuthTokens> {
@@ -18,10 +19,10 @@ export async function registerMerchant(input: unknown): Promise<AuthTokens> {
 
   const merchant = await transaction(async (client) => {
     const result = await client.query<MerchantRow>(
-      `INSERT INTO merchants (business_name, email, password_hash, status)
-       VALUES ($1, $2, $3, 'active')
-       RETURNING id, business_name, email, password_hash`,
-      [dto.businessName, email, passwordHash]
+      `INSERT INTO merchants (business_name, email, password_hash, status, merchant_stellar_address)
+       VALUES ($1, $2, $3, 'active', $4)
+       RETURNING id, business_name, email, password_hash, merchant_stellar_address`,
+      [dto.businessName, email, passwordHash, dto.stellarAddress ?? null]
     );
     return result.rows[0];
   });
@@ -29,10 +30,19 @@ export async function registerMerchant(input: unknown): Promise<AuthTokens> {
   return tokensForMerchant(merchant);
 }
 
+export async function updateMerchantProfile(merchantId: string, input: unknown) {
+  const dto = updateProfileSchema.parse(input);
+  await query(
+    "UPDATE merchants SET merchant_stellar_address = $1, updated_at = now() WHERE id = $2",
+    [dto.stellarAddress, merchantId]
+  );
+  return { stellarAddress: dto.stellarAddress };
+}
+
 export async function loginMerchant(input: unknown): Promise<AuthTokens | null> {
   const dto = loginSchema.parse(input);
   const result = await query<MerchantRow>(
-    `SELECT id, business_name, email, password_hash
+    `SELECT id, business_name, email, password_hash, merchant_stellar_address
      FROM merchants
      WHERE lower(email) = lower($1)
      LIMIT 1`,
@@ -55,7 +65,8 @@ async function tokensForMerchant(merchant: MerchantRow): Promise<AuthTokens> {
     merchant: {
       id: merchant.id,
       businessName: merchant.business_name,
-      email: merchant.email
+      email: merchant.email,
+      stellarAddress: merchant.merchant_stellar_address
     }
   };
 }

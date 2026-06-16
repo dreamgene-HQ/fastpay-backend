@@ -5,8 +5,8 @@ export function usdcAsset() {
   return new StellarSdk.Asset(env.STELLAR_ASSET_CODE, env.STELLAR_ASSET_ISSUER);
 }
 
-export function makeMuxedTreasuryAddress(muxedId: string) {
-  const base = new StellarSdk.Account(env.PLATFORM_TREASURY_PUBLIC_KEY, "0");
+export function makeMuxedAddress(basePublicKey: string, muxedId: string) {
+  const base = new StellarSdk.Account(basePublicKey, "0");
   return new StellarSdk.MuxedAccount(base, muxedId).accountId();
 }
 
