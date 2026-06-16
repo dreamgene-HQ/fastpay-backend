@@ -81,6 +81,28 @@ See `openapi.yaml` for the full contract. Key endpoints:
 
 Gross amount, platform fee, and merchant net are stored separately on every invoice row. Fee collection mechanics are a v2 concern — v0 records the accounting but does not sweep fees.
 
+## Deploy to Fly.io
+
+```sh
+# Install flyctl: https://fly.io/docs/hands-on/install-flyctl/
+fly auth login
+fly launch --no-deploy          # reads fly.toml, registers the app
+fly postgres create --name fastpay-pg --region iad
+fly postgres attach fastpay-pg  # sets DATABASE_URL automatically
+
+# Set remaining secrets
+fly secrets set \
+  JWT_SECRET="$(openssl rand -hex 32)" \
+  FRONTEND_ORIGIN="https://your-frontend.vercel.app" \
+  STELLAR_HORIZON_URL="https://horizon-testnet.stellar.org" \
+  STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015" \
+  STELLAR_ASSET_CODE="USDC" \
+  STELLAR_ASSET_ISSUER="GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+
+fly deploy                      # builds Docker image and deploys
+fly ssh console -C "node dist/src/database/migrate.js"  # run migrations
+```
+
 ## Repo Boundary
 
 This repo does not depend on `fastpay-frontend` or `fastpay-contract`. Integration happens through HTTP/SSE endpoints and `openapi.yaml`. Do not reintroduce a shared local package — that collapses the split back into a monorepo.
