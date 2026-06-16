@@ -1,4 +1,4 @@
-import { registerMerchant, loginMerchant } from "./auth/service.js";
+import { registerMerchant, loginMerchant, updateMerchantProfile } from "./auth/service.js";
 import { screenWallet } from "./compliance/service.js";
 import { env } from "./env.js";
 import { Router, pathId, requireSession, writeJson } from "./http.js";
@@ -20,6 +20,10 @@ router.add("POST", /^\/auth\/login$/, async ({ body }) => {
   }
   return tokens;
 });
+
+router.add("PATCH", /^\/merchant\/profile$/, async ({ session, body }) =>
+  updateMerchantProfile(requireSession(session).sub, body)
+);
 
 router.add("GET", /^\/invoices$/, async ({ session }) => listInvoices(requireSession(session).sub));
 

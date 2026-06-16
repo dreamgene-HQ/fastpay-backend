@@ -1,9 +1,16 @@
 import { z } from "zod";
 
+const stellarAddressSchema = z.string().regex(/^G[A-Z2-7]{55}$/, "must be a Stellar G public key (56 chars)");
+
 export const registerSchema = z.object({
   businessName: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(255),
-  password: z.string().min(12).max(200)
+  password: z.string().min(12).max(200),
+  stellarAddress: stellarAddressSchema.optional()
+});
+
+export const updateProfileSchema = z.object({
+  stellarAddress: stellarAddressSchema
 });
 
 export const loginSchema = z.object({
@@ -13,6 +20,7 @@ export const loginSchema = z.object({
 
 export type RegisterDto = z.infer<typeof registerSchema>;
 export type LoginDto = z.infer<typeof loginSchema>;
+export type UpdateProfileDto = z.infer<typeof updateProfileSchema>;
 
 export type AuthTokens = {
   accessToken: string;
