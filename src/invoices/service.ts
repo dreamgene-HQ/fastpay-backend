@@ -131,11 +131,12 @@ export async function prepareInvoicePayment(publicId: string, payer: string) {
 }
 
 export async function expirePendingInvoices() {
-  await query(
+  const result = await query(
     `UPDATE invoices
      SET state = 'expired', updated_at = now(), version = version + 1
      WHERE state = 'pending' AND expires_at < now()`
   );
+  return result.rowCount ?? 0;
 }
 
 export async function recordTransition(

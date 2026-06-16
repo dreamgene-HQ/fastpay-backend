@@ -79,6 +79,12 @@ export const screenWalletSchema = z.object({
   address: z.string().regex(/^G[A-Z2-7]{55}$/, "address must be a Stellar G public key")
 });
 
+export const submitPaymentSchema = z.object({
+  txHash: z.string().min(1)
+});
+
+export type SubmitPaymentDto = z.infer<typeof submitPaymentSchema>;
+
 export type ScreenWalletDto = z.infer<typeof screenWalletSchema>;
 export type ComplianceDecision = "clear" | "review" | "blocked";
 
